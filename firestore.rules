@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (required)
+    //   - photoURL: string (optional)
+    //   - createdAt: number (required)
+    //
+    // Collection: quizzes
+    // Document ID: {quizId}
+    // Fields:
+    //   - id: string (required)
+    //   - topic: string (required)
+    //   - difficulty: string (required, enum: Easy, Medium, Hard)
+    //   - questions: list (required)
+    //   - createdAt: number (required)
+    //
+    // Collection: results
+    // Document ID: {resultId}
+    // Fields:
+    //   - id: string (required)
+    //   - quizId: string (required)
+    //   - userId: string (required)
+    //   - answers: list (required)
+    //   - totalScore: number (required)
+    //   - maxScore: number (required)
+    //   - strengths: list (optional)
+    //   - weaknesses: list (optional)
+    //   - aiFeedback: string (optional)
+    //   - suggestions: list (optional)
+    //   - createdAt: number (required)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.displayName is string &&
+             data.createdAt is number;
+    }
+
+    function isValidQuiz(data) {
+      return data.keys().hasAll(['id', 'topic', 'difficulty', 'questions', 'createdAt']) &&
+             data.id is string &&
+             data.topic is string &&
+             data.difficulty in ['Easy', 'Medium', 'Hard'] &&
+             data.questions is list &&
+             data.createdAt is number;
+    }
+
+    function isValidResult(data) {
+      return data.keys().hasAll(['id', 'quizId', 'userId', 'answers', 'totalScore', 'maxScore', 'createdAt']) &&
+             data.id is string &&
+             data.quizId is string &&
+             data.userId is string &&
+             data.answers is list &&
+             data.totalScore is number &&
+             data.maxScore is number &&
+             data.createdAt is number;
+    }
+
+    // Rules
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if isOwner(uid) && isValidUser(request.resource.data);
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidQuiz(request.resource.data);
+    }
+
+    match /results/{resultId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId);
+      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId) && isValidResult(request.resource.data);
+    }
+  }
+}
