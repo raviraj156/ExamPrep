@@ -27,6 +27,12 @@
 
 <br/>
 
+<a href="https://examprepx.vercel.app/">
+  <img src="https://img.shields.io/badge/🚀_Live_Demo-examprepx.vercel.app-6366f1?style=for-the-badge&logoColor=white" alt="Live Demo" />
+</a>
+
+<br/><br/>
+
 [Features](#-features) · [Architecture](#-architecture) · [Tech Stack](#-tech-stack) · [Quick Start](#-quick-start) · [ML Pipeline](#-training-the-ml-model)
 
 <br/>
