@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Difficulty, Quiz, QuestionType } from '../types';
-import { generateQuiz } from '../lib/gemini';
+import { generateQuiz } from '../lib/ai';
 import { db, handleFirestoreError, isFirebaseConfigured, OperationType } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Brain, Sparkles, ArrowRight, Loader2, BookOpen, Eye, Flame } from 'lucide-react';
@@ -29,7 +29,7 @@ export default function Home({ onStartQuiz, streak = 0 }: HomeProps) {
       quiz.isFocusMode = isFocusMode;
       quiz.generateFlashcards = generateFlashcards;
 
-      if (isFirebaseConfigured) {
+      if (isFirebaseConfigured && db) {
         try {
           await setDoc(doc(db, 'quizzes', quiz.id), quiz);
         } catch (error) {
@@ -94,15 +94,22 @@ export default function Home({ onStartQuiz, streak = 0 }: HomeProps) {
             <label htmlFor="topic" className="block text-sm font-semibold text-slate-700 mb-2 uppercase tracking-wider">
               Topic or Subject
             </label>
-            <input
-              type="text"
+            <select
               id="topic"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. Quantum Physics, French Revolution, React Hooks..."
-              className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all outline-none"
+              className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all outline-none appearance-none"
               required
-            />
+            >
+              <option value="" disabled>Select an AI Topic...</option>
+              <option value="Machine Learning Basics">Machine Learning Basics</option>
+              <option value="Deep Learning">Deep Learning</option>
+              <option value="Natural Language Processing">Natural Language Processing</option>
+              <option value="Computer Vision">Computer Vision</option>
+              <option value="Generative AI">Generative AI</option>
+              <option value="AI Ethics">AI Ethics</option>
+              <option value="General AI">General AI</option>
+            </select>
           </div>
 
           <div>

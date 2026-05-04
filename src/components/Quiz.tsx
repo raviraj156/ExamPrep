@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Quiz, Answer, QuizResult, UserProfile } from '../types';
+import { Quiz, Answer, QuizResult, UserProfile, PerformanceModel } from '../types';
 import {
   ChevronRight,
   ChevronLeft,
@@ -18,7 +18,8 @@ import {
   TriangleAlert,
   X
 } from 'lucide-react';
-import { evaluateSubjectiveAnswer, generatePerformanceAnalysis, generateFlashcards as apiGenerateFlashcards } from '../lib/gemini';
+import { evaluateSubjectiveAnswer, generateFlashcards as apiGenerateFlashcards } from '../lib/ai';
+import { generateSummaryFromModel, trainPerformanceModel } from '../lib/performanceModel';
 import { auth, db, handleFirestoreError, isFirebaseConfigured, OperationType } from '../lib/firebase';
 import { doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 
@@ -39,6 +40,8 @@ export default function QuizPage({ quiz, onComplete, onQuit }: QuizProps) {
   const [showFlashcards, setShowFlashcards] = useState(false);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [timeSpentMap, setTimeSpentMap] = useState<Record<string, number>>({});
   const flashcardsRequestedRef = useRef(false);
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
@@ -137,6 +140,13 @@ export default function QuizPage({ quiz, onComplete, onQuit }: QuizProps) {
 
   const goToNextQuestion = () => {
     if (!isLastQuestion) {
+      const now = Date.now();
+      const elapsed = Math.round((now - questionStartTime) / 1000);
+      setTimeSpentMap(prev => ({
+        ...prev,
+        [currentQuestion.id]: (prev[currentQuestion.id] || 0) + elapsed
+      }));
+      setQuestionStartTime(now);
       setCurrentQuestionIndex((prev) => prev + 1);
     }
   };
@@ -152,6 +162,13 @@ export default function QuizPage({ quiz, onComplete, onQuit }: QuizProps) {
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    const now = Date.now();
+    const elapsed = Math.round((now - questionStartTime) / 1000);
+    const finalTimeSpentMap = {
+      ...timeSpentMap,
+      [currentQuestion.id]: (timeSpentMap[currentQuestion.id] || 0) + elapsed
+    };
 
     try {
       const evaluatedAnswers: Answer[] = [];
@@ -175,7 +192,8 @@ export default function QuizPage({ quiz, onComplete, onQuit }: QuizProps) {
             questionId: question.id,
             userAnswer,
             score,
-            marksObtained
+            marksObtained,
+            timeSpent: finalTimeSpentMap[question.id] || 0
           });
         } else {
           const evaluation = await evaluateSubjectiveAnswer(
@@ -192,14 +210,30 @@ export default function QuizPage({ quiz, onComplete, onQuit }: QuizProps) {
             userAnswer,
             score: evaluation.score,
             marksObtained,
-            feedback: evaluation.feedback
+            feedback: evaluation.feedback,
+            timeSpent: finalTimeSpentMap[question.id] || 0
           });
         }
       }
 
-      const analysis = await generatePerformanceAnalysis(quiz, evaluatedAnswers);
+      const currentTopicMetrics: Record<string, { total: number, score: number }> = {};
+      quiz.questions.forEach((q, idx) => {
+        const subtopic = q.aiSubtopic || 'general';
+        const answer = evaluatedAnswers[idx];
+        if (!currentTopicMetrics[subtopic]) {
+          currentTopicMetrics[subtopic] = { total: 0, score: 0 };
+        }
+        const weightage = q.weightage || (q.type === 'mcq' ? 1 : 5);
+        currentTopicMetrics[subtopic].total += weightage;
+        currentTopicMetrics[subtopic].score += answer.marksObtained || 0;
+      });
 
-      const result: QuizResult = {
+      const currentTopicScores = Object.entries(currentTopicMetrics).reduce((acc, [topic, data]) => {
+        acc[topic] = data.total > 0 ? data.score / data.total : 0;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const baseResult: QuizResult = {
         id: `res-${Date.now()}`,
         quizId: quiz.id,
         userId: auth.currentUser?.uid || 'anonymous',
@@ -211,16 +245,69 @@ export default function QuizPage({ quiz, onComplete, onQuit }: QuizProps) {
         attemptedCount,
         unattemptedCount: remainingCount,
         markedForLaterCount,
-        strengths: analysis.strengths || [],
-        weaknesses: analysis.weaknesses || [],
-        aiFeedback: analysis.aiFeedback || '',
-        suggestions: analysis.suggestions || [],
+        strengths: [],
+        weaknesses: [],
+        aiFeedback: '',
+        suggestions: [],
+        avgTimeSpent: Object.values(finalTimeSpentMap).reduce((a, b) => a + b, 0) / quiz.questions.length,
+        difficultyHandled: quiz.difficulty === 'Easy' ? 1 : quiz.difficulty === 'Medium' ? 2 : 3,
         createdAt: Date.now()
+      };
+
+      let trainedModel: PerformanceModel | null = null;
+      if (isFirebaseConfigured && auth.currentUser && db) {
+        try {
+          const modelRef = doc(db, 'performanceModels', auth.currentUser.uid);
+          const modelDoc = await getDoc(modelRef);
+          const existingModel = modelDoc.exists() ? (modelDoc.data() as PerformanceModel) : null;
+          trainedModel = trainPerformanceModel(existingModel, baseResult, quiz);
+        } catch (error) {
+          console.error('Failed to load existing performance model. Falling back to fresh model:', error);
+        }
+      }
+
+      if (!trainedModel) {
+        trainedModel = trainPerformanceModel(null, baseResult, quiz);
+      }
+
+      let analysis;
+      try {
+        const attempted_ratio = baseResult.answers.length > 0 ? (baseResult.attemptedCount / baseResult.answers.length) : 0;
+        const response = await fetch('http://localhost:5000/api/summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            overall_accuracy: baseResult.maxScore > 0 ? (baseResult.totalScore / baseResult.maxScore) : 0,
+            mcq_accuracy: currentTopicScores.general !== undefined ? currentTopicScores.general : (baseResult.correctCount / quiz.questions.length), // Fallback to a rough estimate
+            subjective_score: baseResult.answers.filter(a => a.feedback).reduce((acc, a) => acc + (a.score || 0), 0) / (baseResult.answers.filter(a => a.feedback).length || 1) / 10,
+            consistency: 1 - Math.sqrt(baseResult.answers.reduce((acc, a) => acc + Math.pow(((a.marksObtained || 0) / (a.marksObtained ? 1 : 1)) - 0.5, 2), 0) / baseResult.answers.length), // Rough local consistency
+            attempted_ratio,
+            avg_time_spent: baseResult.avgTimeSpent,
+            avg_difficulty: baseResult.difficultyHandled,
+            topic_performance: trainedModel.topicPerformance,
+            current_topic_scores: currentTopicScores
+          })
+        });
+        
+        if (!response.ok) throw new Error('Python backend error');
+        analysis = await response.json();
+      } catch (error) {
+        console.warn('Failed to reach Python backend, falling back to local TS model:', error);
+        analysis = generateSummaryFromModel(trainedModel, baseResult, quiz);
+      }
+
+      const result: QuizResult = {
+        ...baseResult,
+        strengths: analysis.strengths,
+        weaknesses: analysis.weaknesses,
+        aiFeedback: analysis.aiFeedback,
+        suggestions: analysis.suggestions
       };
 
       if (isFirebaseConfigured && auth.currentUser) {
         try {
           await setDoc(doc(db, 'results', result.id), result);
+          await setDoc(doc(db, 'performanceModels', auth.currentUser.uid), trainedModel);
 
           const userRef = doc(db, 'users', auth.currentUser.uid);
           const userDoc = await getDoc(userRef);

@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { FirebaseApp, initializeApp } from 'firebase/app';
+import { Auth, getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { Firestore, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,10 +26,18 @@ export const firebaseConfigError = isFirebaseConfigured
   ? null
   : 'Firebase configuration is incomplete. Add the required `VITE_FIREBASE_*` variables to your `.env` file.';
 
-const app = initializeApp(firebaseConfig);
+let app: FirebaseApp | null = null;
+let dbInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
 
-export const db = getFirestore(app);
-export const auth = getAuth(app);
+if (isFirebaseConfigured) {
+  app = initializeApp(firebaseConfig);
+  dbInstance = getFirestore(app);
+  authInstance = getAuth(app);
+}
+
+export const db = dbInstance;
+export const auth = authInstance;
 export const googleProvider = new GoogleAuthProvider();
 
 export enum OperationType {
@@ -61,16 +69,18 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const currentUser = auth?.currentUser;
+
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
+      userId: currentUser?.uid,
+      email: currentUser?.email,
+      emailVerified: currentUser?.emailVerified,
+      isAnonymous: currentUser?.isAnonymous,
+      tenantId: currentUser?.tenantId,
       providerInfo:
-        auth.currentUser?.providerData.map((provider) => ({
+        currentUser?.providerData.map((provider) => ({
           providerId: provider.providerId,
           displayName: provider.displayName,
           email: provider.email,
@@ -86,7 +96,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export const loginWithGoogle = async () => {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !auth) {
     throw new Error(firebaseConfigError || 'Firebase is not configured.');
   }
 
@@ -100,7 +110,7 @@ export const loginWithGoogle = async () => {
 };
 
 export const logout = async () => {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !auth) {
     return;
   }
 
@@ -111,7 +121,6 @@ export const logout = async () => {
     throw error;
   }
 };
-
 
 
 

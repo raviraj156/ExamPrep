@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "examprep",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,10 +8,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "ml:install": "python -m pip install -r ml/requirements.txt",
+    "ml:train": "python ml/train_ai_summary_model.py --input-csv ml/data/synthetic_10k_dataset.csv --output-ts src/data/aiSummaryModel.ts --output-pkl ml/model.pkl",
+    "ml:from-results": "python ml/build_training_csv_from_firestore.py --results-json ml/data/results.json --output-csv ml/data/ai_quiz_training_from_firestore.csv",
+    "ml:serve": "python ml/app.py",
+    "start:all": "start npm run ml:serve && npm run dev"
   },
   "dependencies": {
-    "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",

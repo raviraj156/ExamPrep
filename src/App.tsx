@@ -31,6 +31,11 @@ export default function App() {
       return;
     }
 
+    if (!auth || !db) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
       setUser(nextUser);
       setAuthError(null);
@@ -101,7 +106,7 @@ export default function App() {
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
           <Loader2 className="w-12 h-12 text-indigo-600" />
         </motion.div>
-        <p className="mt-4 text-indigo-900 font-medium">Initializing CogniQuest...</p>
+        <p className="mt-4 text-indigo-900 font-medium">Initializing ExamPrep...</p>
       </div>
     );
   }
@@ -134,7 +139,7 @@ export default function App() {
                     <Brain className="w-6 h-6 text-white" />
                   </div>
                   <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 hidden sm:block">
-                    CogniQuest
+                    ExamPrep
                   </span>
                 </div>
 
@@ -163,7 +168,7 @@ export default function App() {
                   <div className="h-8 w-px bg-slate-200" />
                   <div className="flex items-center gap-3">
                     <img
-                      src={profile?.photoURL || 'https://ui-avatars.com/api/?name=CogniQuest&background=e0e7ff&color=3730a3'}
+                      src={profile?.photoURL || 'https://ui-avatars.com/api/?name=ExamPrep&background=e0e7ff&color=3730a3'}
                       className="w-8 h-8 rounded-full border border-indigo-200"
                       alt="Profile"
                     />

@@ -55,7 +55,7 @@ export default function Landing({ onLogin, isFirebaseConfigured, firebaseConfigE
             <h1 className="max-w-2xl text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
               Learn faster with
               <span className="block bg-gradient-to-r from-cyan-300 via-emerald-300 to-blue-300 bg-clip-text text-transparent">
-                CogniQuest
+                ExamPrep
               </span>
             </h1>
 
@@ -84,7 +84,7 @@ export default function Landing({ onLogin, isFirebaseConfigured, firebaseConfigE
                 <GraduationCap className="h-6 w-6 text-cyan-300" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Welcome to CogniQuest</p>
+                <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Welcome to ExamPrep</p>
                 <p className="text-lg font-bold text-white">Sign in to continue</p>
               </div>
             </div>

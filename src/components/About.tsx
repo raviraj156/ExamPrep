@@ -34,7 +34,7 @@ export default function About() {
         className="text-center mb-16"
       >
         <h1 className="text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">
-          About <span className="text-indigo-600">CogniQuest</span>
+          About <span className="text-indigo-600">ExamPrep</span>
         </h1>
         <p className="text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto">
           We are on a mission to revolutionize how students prepare for exams by leveraging the power of Generative AI to provide personalized, high-quality learning tools.

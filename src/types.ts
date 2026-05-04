@@ -1,5 +1,13 @@
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
 export type QuestionType = 'mcq' | 'subjective' | 'both';
+export type AISubtopic =
+  | 'ml_basics'
+  | 'deep_learning'
+  | 'nlp'
+  | 'computer_vision'
+  | 'generative_ai'
+  | 'ai_ethics'
+  | 'general_ai';
 
 export interface Question {
   id: string;
@@ -9,6 +17,7 @@ export interface Question {
   correctAnswer: string;
   explanation: string;
   weightage: number; // New: weightage for marking scheme
+  aiSubtopic?: AISubtopic;
 }
 
 export interface Quiz {
@@ -27,7 +36,8 @@ export interface Answer {
   userAnswer: string;
   score?: number; // 0 or 1 for MCQ, 0-10 for subjective
   feedback?: string; // Only for subjective
-  marksObtained?: number; // New: actual marks based on weightage
+  marksObtained?: number;
+  timeSpent?: number; // New: time spent on this question in seconds
 }
 
 export interface QuizResult {
@@ -46,7 +56,30 @@ export interface QuizResult {
   weaknesses: string[];
   aiFeedback: string;
   suggestions: string[];
+  avgTimeSpent: number; // New: average time spent per question
+  difficultyHandled: number; // New: average difficulty level (1-3)
   createdAt: number;
+}
+
+export interface TopicPerformance {
+  attempts: number;
+  avgAccuracy: number;
+  avgMcqAccuracy: number;
+  avgSubjectiveScore: number;
+  trend: 'improving' | 'stable' | 'declining';
+}
+
+export interface PerformanceModel {
+  version: number;
+  totalAttempts: number;
+  overallAccuracy: number;
+  overallMcqAccuracy: number;
+  overallSubjectiveScore: number;
+  consistencyScore: number;
+  avgTimeSpent: number; // New: cumulative average time spent
+  avgDifficulty: number; // New: cumulative average difficulty
+  topicPerformance: Record<string, TopicPerformance>;
+  updatedAt: number;
 }
 
 export interface UserProfile {

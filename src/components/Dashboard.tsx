@@ -14,6 +14,7 @@ export default function Dashboard({ onStartQuiz: _onStartQuiz }: DashboardProps)
   const [results, setResults] = useState<QuizResult[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedQuizId, setExpandedQuizId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -230,6 +231,64 @@ export default function Dashboard({ onStartQuiz: _onStartQuiz }: DashboardProps)
                     </div>
                     <p className="text-2xl font-bold text-slate-900">{res.markedForLaterCount ?? 0}</p>
                   </div>
+                </div>
+
+                <div className="mt-6 border-t border-slate-200/60 pt-4">
+                  <button 
+                    onClick={() => setExpandedQuizId(expandedQuizId === res.id ? null : res.id)}
+                    className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {expandedQuizId === res.id ? 'Hide AI Insights' : 'View AI Insights'}
+                  </button>
+
+                  {expandedQuizId === res.id && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-4 space-y-4"
+                    >
+                      {res.aiFeedback && (
+                        <div className="rounded-2xl bg-indigo-50/50 p-4 border border-indigo-100">
+                          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{res.aiFeedback}</p>
+                        </div>
+                      )}
+                      
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-emerald-600 px-1">Strengths</h5>
+                          <ul className="space-y-1">
+                            {res.strengths.map((s, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-slate-600 bg-white/50 p-2 rounded-xl border border-slate-100">
+                                <span className="text-emerald-500 mt-1">•</span> {s}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="space-y-2">
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-rose-600 px-1">Weaknesses</h5>
+                          <ul className="space-y-1">
+                            {res.weaknesses.map((w, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-slate-600 bg-white/50 p-2 rounded-xl border border-slate-100">
+                                <span className="text-rose-500 mt-1">•</span> {w}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-indigo-600 px-1">Suggestions</h5>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {res.suggestions.map((s, i) => (
+                            <div key={i} className="text-sm text-slate-600 bg-indigo-50/30 p-3 rounded-xl border border-indigo-100/50">
+                              {s}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               </div>
             ))

@@ -1,0 +1,5 @@
+user_id,quiz_id,overall_accuracy,mcq_accuracy,subjective_score,consistency,attempted_ratio,avg_time_spent,avg_difficulty,label_level,label_advice
+u001,q001,0.42,0.35,0.48,0.51,0.75,125,1,beginner,revise_fundamentals;practice_mcq;practice_subjective;improve_speed
+u002,q002,0.58,0.72,0.44,0.63,0.88,45,2,intermediate,practice_subjective;improve_consistency
+u003,q003,0.83,0.86,0.79,0.82,0.94,65,3,advanced,level_up_challenge
+u004,q004,0.35,0.30,0.40,0.45,0.60,15,2,beginner,revise_fundamentals;read_carefully
